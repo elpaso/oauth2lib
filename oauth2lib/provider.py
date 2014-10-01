@@ -335,8 +335,8 @@ class AuthorizationProvider(Provider):
             'refresh_token': refresh_token
         })
 
-    def get_token(self,
-                  grant_type,
+
+    def get_token_for_authorization_code(self,
                   client_id,
                   client_secret,
                   redirect_uri,
@@ -344,8 +344,6 @@ class AuthorizationProvider(Provider):
                   **params):
         """Generate access token HTTP response.
 
-        :param grant_type: Desired grant type. Must be "authorization_code".
-        :type grant_type: str
         :param client_id: Client ID.
         :type client_id: str
         :param client_secret: Client secret.
@@ -356,10 +354,6 @@ class AuthorizationProvider(Provider):
         :type code: str
         :rtype: requests.Response
         """
-
-        # Ensure proper grant_type
-        if grant_type != 'authorization_code':
-            return self._make_json_error_response('unsupported_grant_type')
 
         # Check conditions
         is_valid_client_id = self.validate_client_id(client_id)
@@ -409,6 +403,114 @@ class AuthorizationProvider(Provider):
             'refresh_token': refresh_token
         })
 
+    def get_token_for_password(self, client_id,
+                  username,
+                  password,
+                  **params):
+        """Generate access token HTTP response.
+
+        :param username: Username.
+        :type username: str
+        :param password: password
+        :type password: str
+        :rtype: requests.Response
+        """
+
+        scope = params.get('scope', '')
+        is_valid_scope = self.validate_scope(client_id, scope)
+
+
+        data = self.from_user_credentials(client_id, username, password, scope)
+        is_valid_grant = data is not None
+
+        if not is_valid_scope:
+            return self._make_json_error_response('invalid_scope')
+
+        # Generate access tokens once all conditions have been met
+        access_token = self.generate_access_token()
+        token_type = self.token_type
+        expires_in = self.token_expires_in
+        refresh_token = self.generate_refresh_token()
+
+        # Save information to be used to validate later requests
+        self.persist_token_information(client_id=client_id,
+                                       scope=scope,
+                                       access_token=access_token,
+                                       token_type=token_type,
+                                       expires_in=expires_in,
+                                       refresh_token=refresh_token,
+                                       data=data)
+
+        # Return json response
+        return self._make_json_response({
+            'access_token': access_token,
+            'token_type': token_type,
+            'expires_in': expires_in,
+            'refresh_token': refresh_token
+        })
+
+
+    def get_token_for_refresh_token(self, client_id, client_secret,
+                  refresh_token,
+                  **params):
+        """Generate access token HTTP response.
+
+        :param client_id: Client ID.
+        :type client_id: str
+        :param client_secret: Client secret.
+        :type client_secret: str
+        :param redirect_uri: Client redirect URI.
+        :type redirect_uri: str
+        :param code: Authorization code.
+        :type code: str
+        :rtype: requests.Response
+        """
+
+        # Check conditions
+        is_valid_client_id = self.validate_client_id(client_id)
+        is_valid_client_secret = self.validate_client_secret(client_id,
+                                                             client_secret)
+
+        scope = params.get('scope', '')
+        is_valid_scope = self.validate_scope(client_id, scope)
+        data = self.from_refresh_token(client_id, refresh_token, scope)
+        is_valid_grant = data is not None
+
+        # Return proper error responses on invalid conditions
+        if not (is_valid_client_id and is_valid_client_secret):
+            return self._make_json_error_response('invalid_client')
+
+        if not is_valid_scope:
+            return self._make_json_error_response('invalid_scope')
+
+        # Discard original authorization code
+        self.discard_refresh_token(client_id, refresh_token)
+
+        # Generate access tokens once all conditions have been met
+        access_token = self.generate_access_token()
+        token_type = self.token_type
+        expires_in = self.token_expires_in
+        refresh_token = self.generate_refresh_token()
+
+        # Save information to be used to validate later requests
+        self.persist_token_information(client_id=client_id,
+                                       scope=scope,
+                                       access_token=access_token,
+                                       token_type=token_type,
+                                       expires_in=expires_in,
+                                       refresh_token=refresh_token,
+                                       data=data)
+
+        # Return json response
+        return self._make_json_response({
+            'access_token': access_token,
+            'token_type': token_type,
+            'expires_in': expires_in,
+            'refresh_token': refresh_token
+        })
+
+
+
     def get_authorization_code_from_uri(self, uri):
         """Get authorization code response from a URI. This method will
         ignore the domain and path of the request, instead
@@ -456,20 +558,37 @@ class AuthorizationProvider(Provider):
         :rtype: requests.Response
         """
         try:
-            # Verify OAuth 2.0 Parameters
-            for x in ['grant_type', 'client_id', 'client_secret']:
-                if not data.get(x):
-                    raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
-            
-            # Handle get token from refresh_token
-            if 'refresh_token' in data:
-                return self.refresh_token(**data)
 
-            # Handle get token from authorization code
-            for x in ['redirect_uri', 'code']:
-                if not data.get(x):
-                    raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))            
-            return self.get_token(**data)
+            grant_type = data.get('grant_type')
+
+            if not grant_type:
+                raise TypeError('Missing required OAuth 2.0 POST param: grant_type')
+
+
+            if grant_type == 'authorization_code':
+
+                # Verify OAuth 2.0 Parameters
+                for x in ['client_id', 'client_secret', 'redirect_uri']:
+                    if not data.get(x):
+                        raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
+                return self.get_token_for_authorization_code(**data)
+
+            if grant_type == 'refresh_token':
+                # Verify OAuth 2.0 Parameters
+                for x in ['client_id', 'client_secret', 'refresh_token']:
+                    if not data.get(x):
+                        raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
+                return self.get_token_for_refresh_token(**data)
+
+            if grant_type == 'password':
+                for x in ('username', 'password', 'client_id'):
+                    if not data.get(x):
+                        raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
+                return self.get_token_for_password(**data)
+
+            return self._make_json_error_response('unsupported_grant_type')
+
+
         except TypeError as exc:
             self._handle_exception(exc)
 
@@ -512,6 +631,10 @@ class AuthorizationProvider(Provider):
     def persist_authorization_code(self, client_id, code, scope):
         raise NotImplementedError('Subclasses must implement ' \
                                   'persist_authorization_code.')
+
+    def from_user_credentials(self, client_id, username, password, scope):
+        raise NotImplementedError('Subclasses must implement ' \
+                                  'from_user_credentials.')
 
     def persist_token_information(self, client_id, scope, access_token,
                                   token_type, expires_in, refresh_token,
@@ -592,3 +715,4 @@ class ResourceProvider(Provider):
     def validate_access_token(self, access_token, authorization):
         raise NotImplementedError('Subclasses must implement ' \
                                   'validate_token.')
+
