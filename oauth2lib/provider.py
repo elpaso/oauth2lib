@@ -467,18 +467,20 @@ class AuthorizationProvider(Provider):
         """
 
         # Check conditions
-        is_valid_client_id = self.validate_client_id(client_id)
-        is_valid_client_secret = self.validate_client_secret(client_id,
-                                                             client_secret)
+        # Return proper error responses on invalid conditions
+        client_app = self.validate_client_secret(client_id, client_secret)
+        if not client_app:
+            return self._make_json_error_response('invalid_client')
 
         scope = params.get('scope', '')
         is_valid_scope = self.validate_scope(client_id, scope)
+
         data = self.from_refresh_token(client_id, refresh_token, scope)
         is_valid_grant = data is not None
 
-        # Return proper error responses on invalid conditions
-        if not (is_valid_client_id and is_valid_client_secret):
-            return self._make_json_error_response('invalid_client')
+        if not is_valid_grant:
+            return self._make_json_error_response('invalid_grant')
+
 
         if not is_valid_scope:
             return self._make_json_error_response('invalid_scope')
