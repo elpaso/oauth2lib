@@ -9,6 +9,7 @@ MOCK_CLIENT_SECRET = 'MNBVCXZLKJHGFDSAPOIUYTREWQ'
 MOCK_REDIRECT_URI = 'https://myapp.com/oauth_endpoint'
 MOCK_AUTHORIZATION_CODE = 'poiuytrewqlkjhgfdsamnbvcxz0987654321'
 MOCK_REFRESH_TOKEN = 'uhbygvtfcrdxeszokmijn'
+(MOCK_USERNAME, MOCK_PASSWORD) = ('chris@tempuri.org', 'correct horse battery staple')
 
 
 class MockClient(Client):
@@ -101,6 +102,15 @@ class IntegrationTest(unittest.TestCase):
     def test_get_token_with_valid_authorization_code(self):
         """Test client's ability to get an access token from the provider."""
         data = self.client.get_token(code=MOCK_AUTHORIZATION_CODE,
+                                     scope='example')
+
+        self.assertEquals(40, len(data['access_token']))
+        self.assertEquals(40, len(data['refresh_token']))
+        self.assertEquals('Bearer', data['token_type'])
+        self.assertEquals(3600, data['expires_in'])
+
+    def test_get_token_with_valid_credentials(self):
+        data = self.client.get_token(grant_type='password', username=MOCK_USERNAME, password=MOCK_PASSWORD,
                                      scope='example')
 
         self.assertEquals(40, len(data['access_token']))

@@ -419,9 +419,11 @@ class AuthorizationProvider(Provider):
         scope = params.get('scope', '')
         is_valid_scope = self.validate_scope(client_id, scope)
 
-
         data = self.from_user_credentials(client_id, username, password, scope)
-        is_valid_grant = data is not None
+
+        # If user isn't found, then claim invalid grant.
+        if not data:
+            return self._make_json_error_response('invalid_grant')
 
         if not is_valid_scope:
             return self._make_json_error_response('invalid_scope')
