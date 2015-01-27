@@ -6,7 +6,7 @@ try:
     from werkzeug.exceptions import Unauthorized
 except ImportError:
     Unauthorized = Exception
-from . import utils
+import utils
 
 
 class Provider(object):
@@ -452,6 +452,53 @@ class AuthorizationProvider(Provider):
         })
 
 
+    def get_token_for_anonymous(self, client_id,
+                  **params):
+        """Generate access token HTTP response.
+
+        :param username: Username.
+        :type username: str
+        :param password: password
+        :type password: str
+        :rtype: requests.Response
+        """
+
+        scope = params.get('scope', '')
+        is_valid_scope = self.validate_scope(client_id, scope)
+
+        data = self.for_anonymous(client_id, scope)
+
+        # If user isn't found, then claim invalid grant.
+        if not data:
+            return self._make_json_error_response('invalid_grant')
+
+        if not is_valid_scope:
+            return self._make_json_error_response('invalid_scope')
+
+        # Generate access tokens once all conditions have been met
+        access_token = self.generate_access_token()
+        token_type = self.token_type
+        expires_in = self.token_expires_in
+        refresh_token = self.generate_refresh_token()
+
+        # Save information to be used to validate later requests
+        self.persist_token_information(client_id=client_id,
+                                       scope=scope,
+                                       access_token=access_token,
+                                       token_type=token_type,
+                                       expires_in=expires_in,
+                                       refresh_token=refresh_token,
+                                       data=data)
+
+        # Return json response
+        return self._make_json_response({
+            'access_token': access_token,
+            'token_type': token_type,
+            'expires_in': expires_in,
+            'refresh_token': refresh_token
+        })
+
+
     def get_token_for_facebook_access_token(self, client_id, facebook_user_id, facebook_access_token, **params):
         """Generate access token HTTP response.
 
@@ -644,6 +691,9 @@ class AuthorizationProvider(Provider):
                         raise TypeError("Missing required param: {0}".format(x))
                 return self.get_token_for_facebook_access_token(**data)
 
+            if grant_type == 'anonymous':
+                return self.get_token_for_anonymous(**data)
+
             return self._make_json_error_response('unsupported_grant_type')
 
 
@@ -693,6 +743,10 @@ class AuthorizationProvider(Provider):
     def from_user_credentials(self, client_id, username, password, scope):
         raise NotImplementedError('Subclasses must implement ' \
                                   'from_user_credentials.')
+
+    def for_anonymous(self, client_id, scope):
+        raise NotImplementedError('Subclasses must implement ' \
+                                  'from_anonymous.')
 
     def from_facebook_access_token(self, client_id, facebook_user_id, facebook_access_token, scope):
         raise NotImplementedError('Subclasses must implement ' \
@@ -777,4 +831,5 @@ class ResourceProvider(Provider):
     def validate_access_token(self, access_token, authorization):
         raise NotImplementedError('Subclasses must implement ' \
                                   'validate_token.')
+
 
