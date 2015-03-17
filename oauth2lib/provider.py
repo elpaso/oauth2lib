@@ -72,7 +72,7 @@ class Provider(object):
         response_headers = {}
         if headers is not None:
             response_headers.update(headers)
-        response_headers['Content-Type'] = 'application/json;charset=UTF-8'
+        response_headers['Content-Type'] = 'application/json'
         response_headers['Cache-Control'] = 'no-store'
         response_headers['Pragma'] = 'no-cache'
         return self._make_response(json.dumps(data),
@@ -332,7 +332,8 @@ class AuthorizationProvider(Provider):
             'access_token': access_token,
             'token_type': token_type,
             'expires_in': expires_in,
-            'refresh_token': refresh_token
+            'refresh_token': refresh_token,
+            'user_id': data['user_id']
         })
 
 
@@ -400,7 +401,8 @@ class AuthorizationProvider(Provider):
             'access_token': access_token,
             'token_type': token_type,
             'expires_in': expires_in,
-            'refresh_token': refresh_token
+            'refresh_token': refresh_token,
+            'user_id': data['user_id']
         })
 
     def get_token_for_password(self, client_id,
@@ -448,7 +450,8 @@ class AuthorizationProvider(Provider):
             'access_token': access_token,
             'token_type': token_type,
             'expires_in': expires_in,
-            'refresh_token': refresh_token
+            'refresh_token': refresh_token,
+            'user_id': data['user_id']
         })
 
 
@@ -674,7 +677,7 @@ class AuthorizationProvider(Provider):
 
             if grant_type == 'refresh_token':
                 # Verify OAuth 2.0 Parameters
-                for x in ['client_id', 'client_secret', 'refresh_token']:
+                for x in ['client_id', 'refresh_token']:
                     if not data.get(x):
                         raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
                 return self.get_token_for_refresh_token(**data)
