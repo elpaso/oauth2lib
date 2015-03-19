@@ -671,26 +671,26 @@ class AuthorizationProvider(Provider):
 
                 # Verify OAuth 2.0 Parameters
                 for x in ['client_id', 'client_secret', 'redirect_uri']:
-                    if not data.get(x):
+                    if x not in data:
                         raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
                 return self.get_token_for_authorization_code(**data)
 
             if grant_type == 'refresh_token':
                 # Verify OAuth 2.0 Parameters
                 for x in ['client_id', 'refresh_token']:
-                    if not data.get(x):
+                    if x not in data:
                         raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
                 return self.get_token_for_refresh_token(**data)
 
             if grant_type == 'password':
                 for x in ('username', 'password', 'client_id'):
-                    if not data.get(x):
+                    if x not in data:
                         raise TypeError("Missing required OAuth 2.0 POST param: {0}".format(x))
                 return self.get_token_for_password(**data)
 
             if grant_type == 'facebook':
                 for x in ('facebook_user_id', 'facebook_access_token', 'client_id'):
-                    if not data.get(x):
+                    if x not in data:
                         raise TypeError("Missing required param: {0}".format(x))
                 return self.get_token_for_facebook_access_token(**data)
 
