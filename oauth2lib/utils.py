@@ -1,10 +1,23 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
 import string
 import urllib
-import urlparse
+try:
+    from urllib.parse import urlparse, urlencode, urljoin, parse_qsl
+    from urllib.request import urlopen, Request
+    from urllib.error import HTTPError
+except ImportError:
+    from urlparse import urlparse, urljoin
+    from urllib import urlencode
+    from urllib2 import urlopen, Request, HTTPError
+
 from random import SystemRandom
 
-UNICODE_ASCII_CHARACTERS = (string.ascii_letters.decode('ascii') +
-    string.digits.decode('ascii'))
+try:
+    UNICODE_ASCII_CHARACTERS = (string.ascii_letters +
+        string.digits)
+except AttributeError:
+    UNICODE_ASCII_CHARACTERS = (string.ascii_letters.decode('ascii') +
+        string.digits.decode('ascii'))
 
 
 def random_ascii_string(length):
@@ -19,7 +32,7 @@ def url_query_params(url):
     :type url: str
     :rtype: dict
     """
-    return dict(urlparse.parse_qsl(urlparse.urlparse(url).query, True))
+    return dict(parse_qsl(urlparse.urlparse(url).query, True))
 
 
 def url_dequery(url):

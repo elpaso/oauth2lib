@@ -1,12 +1,13 @@
+from __future__ import absolute_import, division, print_function, unicode_literals
 import json
 import logging
 from requests import Response
-from cStringIO import StringIO
+from io import BytesIO
 try:
     from werkzeug.exceptions import Unauthorized
 except ImportError:
     Unauthorized = Exception
-import utils
+from . import utils
 
 
 class Provider(object):
@@ -36,7 +37,7 @@ class Provider(object):
         res.status_code = status_code
         if headers is not None:
             res.headers.update(headers)
-        res.raw = StringIO(body)
+        res.raw = BytesIO(body)
         return res
 
     def _make_redirect_error_response(self, redirect_uri, err):
