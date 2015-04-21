@@ -22,7 +22,7 @@ except AttributeError:
 
 def random_ascii_string(length):
     random = SystemRandom()
-    return ''.join([random.choice(UNICODE_ASCII_CHARACTERS) for x in xrange(length)])
+    return ''.join([random.choice(UNICODE_ASCII_CHARACTERS) for x in range(length)])
 
 
 def url_query_params(url):

@@ -37,7 +37,7 @@ class Provider(object):
         res.status_code = status_code
         if headers is not None:
             res.headers.update(headers)
-        res.raw = BytesIO(body)
+        res.raw = BytesIO(bytes(body, 'utf-8'))
         return res
 
     def _make_redirect_error_response(self, redirect_uri, err):
