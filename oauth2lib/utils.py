@@ -2,11 +2,11 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import string
 import urllib
 try:
-    from urllib.parse import urlparse, urlencode, urljoin, parse_qsl
+    from urllib.parse import urlparse, urlencode, urljoin, parse_qsl, urlunparse
     from urllib.request import urlopen, Request
     from urllib.error import HTTPError
 except ImportError:
-    from urlparse import urlparse, urljoin
+    from urlparse import urlparse, urljoin, urlunparse, parse_qsl
     from urllib import urlencode
     from urllib2 import urlopen, Request, HTTPError
 
@@ -32,7 +32,7 @@ def url_query_params(url):
     :type url: str
     :rtype: dict
     """
-    return dict(parse_qsl(urlparse.urlparse(url).query, True))
+    return dict(parse_qsl(urlparse(url).query, True))
 
 
 def url_dequery(url):
@@ -42,8 +42,8 @@ def url_dequery(url):
     :type url: str
     :rtype: str
     """
-    url = urlparse.urlparse(url)
-    return urlparse.urlunparse((url.scheme,
+    url = urlparse(url)
+    return urlunparse((url.scheme,
                                 url.netloc,
                                 url.path,
                                 url.params,
@@ -61,18 +61,18 @@ def build_url(base, additional_params=None):
     :type additional_params: dict
     :rtype: str
     """
-    url = urlparse.urlparse(base)
+    url = urlparse(base)
     query_params = {}
-    query_params.update(urlparse.parse_qsl(url.query, True))
+    query_params.update(parse_qsl(url.query, True))
     if additional_params is not None:
         query_params.update(additional_params)
-        for k, v in additional_params.iteritems():
+        for k, v in additional_params.items():
             if v is None:
                 query_params.pop(k)
 
-    return urlparse.urlunparse((url.scheme,
+    return urlunparse((url.scheme,
                                 url.netloc,
                                 url.path,
                                 url.params,
-                                urllib.urlencode(query_params),
+                                urlencode(query_params),
                                 url.fragment))
