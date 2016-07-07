@@ -78,3 +78,5 @@ class Client(object):
             return response.json()
         except TypeError:
             return response.json
+        except:
+            return response.text
