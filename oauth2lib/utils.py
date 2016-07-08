@@ -70,9 +70,11 @@ def build_url(base, additional_params=None):
             if v is None:
                 query_params.pop(k)
 
-    return urlunparse((url.scheme,
-                                url.netloc,
-                                url.path,
-                                url.params,
-                                urlencode(query_params),
-                                url.fragment))
+    # Py3 future compatibility
+    return urlunparse((str(url.scheme),
+                      str(url.netloc),
+                      str(url.path),
+                      str(url.params),
+                      str(urlencode(query_params)),
+                      str(url.fragment)))
+
